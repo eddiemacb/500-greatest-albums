@@ -249,7 +249,8 @@
   input[type="text"]:focus-visible,
   select:focus-visible,
   .decade-bar:focus-visible,
-  .clear-btn:focus-visible {
+  .clear-btn:focus-visible,
+  .artist-summary:focus-visible {
     outline: 3px solid var(--forest);
     outline-offset: 2px;
   }
@@ -355,6 +356,88 @@
     color: var(--ink-faint);
   }
 
+  /* ---------- Artist groups (grouped-by-artist view) ---------- */
+
+  .list-grid.list-grid--grouped {
+    grid-template-columns: 1fr;
+    max-width: 820px;
+  }
+
+  .artist-group {
+    border-bottom: 2px dashed var(--hairline);
+    padding: 4px 0;
+  }
+
+  .artist-group[open] {
+    padding-bottom: 10px;
+  }
+
+  .artist-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px 4px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .artist-summary::-webkit-details-marker { display: none; }
+  .artist-summary::marker { content: ''; }
+
+  .artist-group.accent-mustard .badge { border-color: var(--mustard-deep); color: var(--mustard-deep); }
+  .artist-group.accent-forest .badge { border-color: var(--forest); color: var(--forest); }
+  .artist-group.accent-rust .badge { border-color: var(--rust); color: var(--rust); }
+
+  .group-count {
+    margin-top: 6px;
+    font-weight: 700;
+  }
+
+  .disclosure-diamond {
+    flex: none;
+    align-self: center;
+    width: 10px;
+    height: 10px;
+    background: var(--rust);
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
+  }
+
+  .artist-group.accent-mustard .disclosure-diamond { background: var(--mustard-deep); }
+  .artist-group.accent-forest .disclosure-diamond { background: var(--forest); }
+
+  .artist-group[open] .disclosure-diamond {
+    transform: rotate(45deg) scale(1.3);
+  }
+
+  .artist-albums {
+    padding-left: 60px;
+  }
+
+  .sub-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 4px;
+    border-top: 1px dashed var(--hairline-soft);
+  }
+
+  .sub-row:first-child { border-top: none; }
+
+  .sub-badge {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--ink-faint);
+    color: var(--ink-faint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--display-font);
+    font-size: 11px;
+  }
+
   /* ---------- Footer ---------- */
 
   .fine-print {
@@ -409,6 +492,7 @@
         <option value="year-desc">Year (newest first)</option>
         <option value="year-asc">Year (oldest first)</option>
         <option value="artist-asc">Artist (A → Z)</option>
+        <option value="grouped-artist">Artist (# of albums)</option>
         <option value="album-asc">Album (A → Z)</option>
       </select>
     </label>
@@ -3934,7 +4018,8 @@ const state = {
   query: '',
   decade: null,
   sortField: 'rank',
-  sortDir: 'asc'
+  sortDir: 'asc',
+  viewMode: 'flat'
 };
 
 function decadeOf(year) {
@@ -4014,19 +4099,50 @@ function getFiltered() {
   return items;
 }
 
+function getArtistGroups(items) {
+  const map = new Map();
+  for (const a of items) {
+    if (!map.has(a.artist)) map.set(a.artist, []);
+    map.get(a.artist).push(a);
+  }
+
+  const groups = [];
+  for (const [artist, albums] of map) {
+    if (albums.length < 2) continue;
+    const sorted = albums.slice().sort((x, y) => x.year - y.year);
+    groups.push({ artist, albums: sorted, count: sorted.length });
+  }
+
+  groups.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.artist.toLowerCase().localeCompare(b.artist.toLowerCase());
+  });
+
+  return groups;
+}
+
 function renderList() {
   const filtered = getFiltered();
   const grid = document.getElementById('listGrid');
   grid.textContent = '';
+  grid.classList.toggle('list-grid--grouped', state.viewMode === 'grouped-artist');
 
-  if (filtered.length === 0) {
+  if (state.viewMode === 'grouped-artist') {
+    renderGroupedList(filtered, grid);
+  } else {
+    renderFlatList(filtered, grid);
+  }
+}
+
+function renderFlatList(items, grid) {
+  if (items.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'no-results';
     empty.textContent = 'No albums match those filters.';
     grid.appendChild(empty);
   } else {
     const frag = document.createDocumentFragment();
-    filtered.forEach((a, i) => {
+    items.forEach((a, i) => {
       const row = document.createElement('div');
       row.className = 'row accent-' + ACCENTS[i % 3];
 
@@ -4057,7 +4173,88 @@ function renderList() {
   }
 
   const statusLine = document.getElementById('statusLine');
-  statusLine.textContent = 'Showing ' + filtered.length + ' of ' + ALBUMS.length + ' albums.';
+  statusLine.textContent = 'Showing ' + items.length + ' of ' + ALBUMS.length + ' albums.';
+}
+
+function renderGroupedList(items, grid) {
+  const groups = getArtistGroups(items);
+  const statusLine = document.getElementById('statusLine');
+
+  if (groups.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'no-results';
+    empty.textContent = 'No artist has 2 or more albums among the current filters.';
+    grid.appendChild(empty);
+    statusLine.textContent = 'Showing 0 artists with 2+ albums (of ' + ALBUMS.length + ' albums total).';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  let totalAlbums = 0;
+  groups.forEach((g, i) => {
+    totalAlbums += g.count;
+    const accent = ACCENTS[i % 3];
+
+    const details = document.createElement('details');
+    details.className = 'artist-group accent-' + accent;
+
+    const summary = document.createElement('summary');
+    summary.className = 'artist-summary';
+
+    const badge = document.createElement('div');
+    badge.className = 'badge';
+    badge.textContent = String(g.count);
+
+    const summaryBody = document.createElement('div');
+    summaryBody.className = 'row-body';
+
+    const artistName = document.createElement('div');
+    artistName.className = 'row-artist';
+    artistName.textContent = g.artist;
+
+    const countLine = document.createElement('div');
+    countLine.className = 'row-meta group-count';
+    countLine.textContent = g.count + (g.count === 1 ? ' Album' : ' Albums');
+
+    summaryBody.append(artistName, countLine);
+
+    const disclosure = document.createElement('span');
+    disclosure.className = 'disclosure-diamond';
+
+    summary.append(badge, summaryBody, disclosure);
+    details.appendChild(summary);
+
+    const albumList = document.createElement('div');
+    albumList.className = 'artist-albums';
+    g.albums.forEach(a => {
+      const sub = document.createElement('div');
+      sub.className = 'sub-row';
+
+      const subBadge = document.createElement('div');
+      subBadge.className = 'sub-badge';
+      subBadge.textContent = '#' + a.rank;
+
+      const subBody = document.createElement('div');
+      subBody.className = 'row-body';
+
+      const subAlbum = document.createElement('div');
+      subAlbum.className = 'row-album';
+      subAlbum.textContent = '‘' + a.album + '’';
+
+      const subMeta = document.createElement('div');
+      subMeta.className = 'row-meta';
+      subMeta.textContent = a.label + ' · ' + a.year;
+
+      subBody.append(subAlbum, subMeta);
+      sub.append(subBadge, subBody);
+      albumList.appendChild(sub);
+    });
+    details.appendChild(albumList);
+    frag.appendChild(details);
+  });
+  grid.appendChild(frag);
+
+  statusLine.textContent = 'Showing ' + groups.length + ' artists with 2+ albums (' + totalAlbums + ' albums) — ' + items.length + ' albums match current filters.';
 }
 
 document.getElementById('searchInput').addEventListener('input', (e) => {
@@ -4066,9 +4263,15 @@ document.getElementById('searchInput').addEventListener('input', (e) => {
 });
 
 document.getElementById('sortSelect').addEventListener('change', (e) => {
-  const [field, dir] = e.target.value.split('-');
-  state.sortField = field;
-  state.sortDir = dir;
+  const value = e.target.value;
+  if (value === 'grouped-artist') {
+    state.viewMode = 'grouped-artist';
+  } else {
+    state.viewMode = 'flat';
+    const [field, dir] = value.split('-');
+    state.sortField = field;
+    state.sortDir = dir;
+  }
   renderList();
 });
 
@@ -4077,6 +4280,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
   state.decade = null;
   state.sortField = 'rank';
   state.sortDir = 'asc';
+  state.viewMode = 'flat';
   document.getElementById('searchInput').value = '';
   document.getElementById('sortSelect').value = 'rank-asc';
   renderDecadeBars();
