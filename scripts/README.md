@@ -9,13 +9,17 @@ part of the deployed page and add no runtime dependency to it.
 1. Create a Spotify Developer app at https://developer.spotify.com/dashboard
    (free, just needs a Spotify account) to get a `Client ID` and
    `Client Secret`.
-2. Requires Node 18+ (uses the built-in `fetch`, no `npm install`).
+2. Requires PowerShell (ships with Windows) — no install needed.
 
 ## Usage
 
-```sh
-SPOTIFY_CLIENT_ID=xxx SPOTIFY_CLIENT_SECRET=yyy node scripts/resolve-spotify-ids.js
+```powershell
+$env:SPOTIFY_CLIENT_ID = "xxx"
+$env:SPOTIFY_CLIENT_SECRET = "yyy"
+.\scripts\resolve-spotify-ids.ps1
 ```
+
+(or pass `-ClientId`/`-ClientSecret` directly instead of using env vars).
 
 This searches Spotify for every album that doesn't yet have a
 `links.spotify` value and writes candidates to `scripts/spotify-matches.json`
@@ -29,12 +33,14 @@ matched `name`/`artists`/`releaseDate`, and fix or null out anything wrong.
 
 Once you're happy with the file:
 
-```sh
-node scripts/merge-spotify-ids.js
+```powershell
+.\scripts\merge-spotify-ids.ps1
 ```
 
 This writes the reviewed `links.spotify` values into `index.html`'s
-`ALBUMS` array and reformats that array to consistent JSON spacing — expect
-a full-array diff even though only some entries actually changed. Review
-the diff, then delete `scripts/spotify-matches.json` (or leave it — it's
-git-ignored) and commit.
+`ALBUMS` array. It round-trips the whole array through PowerShell's JSON
+cmdlets, which happens to match the file's existing formatting almost
+exactly (that's how it was originally authored), so the diff should stay
+small and limited to entries that actually changed. Review the diff, then
+delete `scripts/spotify-matches.json` (or leave it — it's git-ignored) and
+commit.
