@@ -439,6 +439,30 @@
     font-size: 11px;
   }
 
+  .row-links {
+    flex: none;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .row-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    color: var(--ink-faint);
+    transition: color 0.15s ease;
+  }
+
+  .row-link svg { width: 100%; height: 100%; fill: currentColor; }
+
+  .row-link:hover, .row-link:focus-visible { color: var(--forest); }
+
+  .sub-row .row-link { width: 20px; height: 20px; }
+
   /* ---------- Footer ---------- */
 
   .fine-print {
@@ -516,7 +540,8 @@ const ALBUMS = [
         "artist":  "Arcade Fire",
         "album":  "Funeral",
         "label":  "Merge",
-        "year":  2004
+        "year":  2004,
+        "links": { "spotify": "6ZB8qaR9JNuS0Q0bG1nbcH" }
     },
     {
         "rank":  499,
@@ -4122,6 +4147,36 @@ function getArtistGroups(items) {
   return groups;
 }
 
+const LINK_SERVICES = {
+  spotify: {
+    label: 'Listen on Spotify',
+    url: id => 'https://open.spotify.com/album/' + id,
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.59 14.4a.62.62 0 0 1-.86.21c-2.36-1.44-5.34-1.77-8.84-.97a.63.63 0 1 1-.28-1.23c3.83-.88 7.11-.5 9.76 1.12.3.18.4.57.22.87Zm1.22-2.72a.78.78 0 0 1-1.08.26c-2.7-1.66-6.82-2.14-10.02-1.17a.78.78 0 1 1-.46-1.5c3.65-1.11 8.19-.57 11.3 1.34.37.23.5.72.26 1.07Zm.11-2.83C14.98 9.07 9.08 8.87 5.6 9.93a.94.94 0 1 1-.55-1.8c4-1.22 10.5-.98 14.61 1.5a.94.94 0 0 1-.98 1.6Z"/></svg>'
+  }
+};
+
+function buildLinksRow(album) {
+  if (!album.links) return null;
+  const keys = Object.keys(LINK_SERVICES).filter(k => album.links[k]);
+  if (keys.length === 0) return null;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'row-links';
+  keys.forEach(key => {
+    const svc = LINK_SERVICES[key];
+    const link = document.createElement('a');
+    link.className = 'row-link';
+    link.href = svc.url(album.links[key]);
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.title = svc.label;
+    link.setAttribute('aria-label', svc.label);
+    link.innerHTML = svc.icon;
+    wrap.appendChild(link);
+  });
+  return wrap;
+}
+
 function renderList() {
   const filtered = getFiltered();
   const grid = document.getElementById('listGrid');
@@ -4168,6 +4223,10 @@ function renderFlatList(items, grid) {
 
       body.append(artist, album, meta);
       row.append(badge, body);
+
+      const links = buildLinksRow(a);
+      if (links) row.appendChild(links);
+
       frag.appendChild(row);
     });
     grid.appendChild(frag);
@@ -4248,6 +4307,10 @@ function renderGroupedList(items, grid) {
 
       subBody.append(subAlbum, subMeta);
       sub.append(subBadge, subBody);
+
+      const subLinks = buildLinksRow(a);
+      if (subLinks) sub.appendChild(subLinks);
+
       albumList.appendChild(sub);
     });
     details.appendChild(albumList);
