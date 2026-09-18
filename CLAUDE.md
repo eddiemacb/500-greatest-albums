@@ -18,7 +18,11 @@ this cycle:
 2. **Create a GitHub issue** describing the change (`gh issue create`).
 3. **Create a branch off `main`**, named `<issue-number>-kebab-summary`
    (e.g. `13-fix-mobile-decade-chart-reset`).
-4. **Implement** the change on that branch.
+4. **Implement** the change on that branch. If the change is
+   user-facing, prepend a new entry to `RELEASE_NOTES` in
+   `index.html` (newest first) and bump `CURRENT_VERSION` per
+   semver — **patch** for fixes/cosmetic tweaks, **minor** for new
+   features, **major** reserved for breaking/redesign changes.
 5. **Commit** with a message referencing the issue (e.g.
    `Fix mobile decade chart reset (#13)`).
 6. **Push** the branch and **open a PR** with `gh pr create`, with
