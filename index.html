@@ -251,7 +251,8 @@
   select:focus-visible,
   .decade-bar:focus-visible,
   .clear-btn:focus-visible,
-  .artist-summary:focus-visible {
+  .artist-summary:focus-visible,
+  .release-notes-summary:focus-visible {
     outline: 3px solid var(--forest);
     outline-offset: 2px;
   }
@@ -482,6 +483,68 @@
     margin: 0;
   }
 
+  .release-notes {
+    max-width: 480px;
+    margin: 16px auto 0;
+    text-align: left;
+  }
+
+  .release-notes-summary {
+    display: block;
+    text-align: center;
+    padding: 6px 0;
+    font-family: var(--body-font);
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .release-notes-summary::-webkit-details-marker { display: none; }
+  .release-notes-summary::marker { content: ''; }
+
+  .release-notes-version {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .release-notes-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 12px 4px 0;
+    border-top: 1px dashed var(--hairline-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .release-note-entry {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    font-family: var(--body-font);
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-faint);
+  }
+
+  .release-note-version {
+    flex: none;
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .release-note-date {
+    flex: none;
+    color: var(--ink-faint);
+  }
+
+  .release-note-summary {
+    flex: 1 1 200px;
+  }
+
   @media (max-width: 600px) {
     .controls { flex-direction: column; align-items: stretch; }
     .search-wrap, .sort-wrap { flex: 1 1 auto; }
@@ -530,6 +593,11 @@
 
   <footer class="fine-print">
     <p>Source: Rolling Stone, "The 500 Greatest Albums of All Time," updated December 2023 — tabulated from Top 50 ballots submitted by more than 300 artists, producers, critics, and industry figures.</p>
+
+    <details class="release-notes">
+      <summary class="release-notes-summary">Release Notes <span class="release-notes-version" id="releaseNotesVersion"></span></summary>
+      <ul class="release-notes-list" id="releaseNotesList"></ul>
+    </details>
   </footer>
 </div>
 
@@ -5727,6 +5795,45 @@ function renderGroupedList(items, grid) {
   statusLine.textContent = 'Showing ' + groups.length + ' artists with 2+ albums (' + totalAlbums + ' albums) — ' + items.length + ' albums match current filters.';
 }
 
+const CURRENT_VERSION = '1.2.0'; // keep in sync with RELEASE_NOTES[0].version
+
+const RELEASE_NOTES = [
+  { version: '1.2.0', date: '2026-09-14', summary: 'Added Spotify "Listen" links to album entries.' },
+  { version: '1.1.1', date: '2026-09-12', summary: 'Added a site favicon.' },
+  { version: '1.1.0', date: '2026-09-12', summary: 'Added a grouped-by-artist view to the "Order by" dropdown.' },
+  { version: '1.0.1', date: '2026-09-11', summary: 'Fixed a mobile portrait-orientation rendering bug.' },
+  { version: '1.0.0', date: '2026-09-11', summary: 'Initial release.' }
+];
+
+function renderReleaseNotes() {
+  const versionBadge = document.getElementById('releaseNotesVersion');
+  if (versionBadge) versionBadge.textContent = 'v' + CURRENT_VERSION;
+
+  const list = document.getElementById('releaseNotesList');
+  if (!list) return;
+  const frag = document.createDocumentFragment();
+  for (const entry of RELEASE_NOTES) {
+    const li = document.createElement('li');
+    li.className = 'release-note-entry';
+
+    const version = document.createElement('span');
+    version.className = 'release-note-version';
+    version.textContent = 'v' + entry.version;
+
+    const date = document.createElement('span');
+    date.className = 'release-note-date';
+    date.textContent = entry.date;
+
+    const summary = document.createElement('span');
+    summary.className = 'release-note-summary';
+    summary.textContent = entry.summary;
+
+    li.append(version, date, summary);
+    frag.appendChild(li);
+  }
+  list.appendChild(frag);
+}
+
 document.getElementById('searchInput').addEventListener('input', (e) => {
   state.query = e.target.value.trim().toLowerCase();
   renderList();
@@ -5759,6 +5866,7 @@ document.getElementById('clearBtn').addEventListener('click', () => {
 
 renderDecadeBars();
 renderList();
+renderReleaseNotes();
 </script>
 </body>
 </html>
